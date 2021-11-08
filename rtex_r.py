@@ -13,14 +13,14 @@ def rate_images(test_case_ids, x_test, test_cases_images, clean=True, dump_file_
     :param dump_file_name: the name of the dump file used for storing the abnormal image paths
     :return: a dict containing the abnormal image paths
     """
+    rtex_r_model = load_model("data/models/iu_xray_bi_cxn.hdf5")
+
     if not clean and os.path.isfile(dump_file_name):
         print("Using pre-stored RTEX@R results from dump file!")
         abnormal_cases_file = open("data/abnormal_cases_images.json", "r")
         abnormal_cases_images = json.load(abnormal_cases_file)
-        return abnormal_cases_images
     else:
-        bi_cxn = load_model("data/models/iu_xray_bi_cxn.hdf5")
-        test_abn_probs = bi_cxn.predict(x_test, batch_size=16, verbose=1).flatten()
+        test_abn_probs = rtex_r_model.predict(x_test, batch_size=16, verbose=1).flatten()
 
         cases_probs = dict(zip(test_case_ids, test_abn_probs))
         # Sort all exams (a.k.a. cases)
@@ -31,4 +31,5 @@ def rate_images(test_case_ids, x_test, test_cases_images, clean=True, dump_file_
 
         abnormal_cases_file = open(dump_file_name, "w")
         json.dump(abnormal_cases_images, abnormal_cases_file)
-        return abnormal_cases_images
+
+    return abnormal_cases_images, rtex_r_model

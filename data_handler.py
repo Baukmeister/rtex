@@ -15,7 +15,8 @@ def load_image(image_path):
     img.close()
     return x
 
-def encode_images(cases_images, images_path):
+
+def encode_images(cases_images, images_path, return_images=False):
     x1_data, x2_data = [], []
 
     for case in cases_images:
@@ -24,12 +25,15 @@ def encode_images(cases_images, images_path):
         x1 = load_image(os.path.join(images_path, images[0]))
         x2 = load_image(os.path.join(images_path, images[1]))
 
-
         x1_data.append(x1)
         x2_data.append(x2)
 
-    return [np.array(x1_data), np.array(x2_data)]
-    
+    if return_images:
+        return [np.array(x1_data), np.array(x2_data)], x1, x2
+    else:
+        return [np.array(x1_data), np.array(x2_data)]
+
+
 def extract_img_embeddings(model, images_path, data):
     case_vectors = {}
     for report in tqdm(data):
@@ -47,7 +51,7 @@ def extract_img_embeddings(model, images_path, data):
         # Predict
         x1 = np.expand_dims(encoded[0], axis=0)
         x2 = np.expand_dims(encoded[1], axis=0)
-        vector = model.predict([x1,x2])
+        vector = model.predict([x1, x2])
 
         case_vectors[report] = vector.transpose().flatten()
     return case_vectors
