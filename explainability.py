@@ -31,6 +31,7 @@ show_images(
     num=10,
     explainability=True,
     model=rtex_model,
-    lime_samples=500,
-    lime_features=8
+    lime_samples=1000,
+    lime_features=8,
+    save_figs=True
 )

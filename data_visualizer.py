@@ -1,5 +1,7 @@
+import shutil
+
 import matplotlib.pyplot as plt
-from PIL import Image
+import os
 from lime import lime_image
 from skimage.segmentation import mark_boundaries
 import numpy as np
@@ -14,7 +16,8 @@ def show_images(
         model=None,
         img_width=224,
         lime_samples=1000,
-        lime_features=10
+        lime_features=10,
+        save_figs=False
 ):
 
     def _predict(pasted_image):
@@ -29,6 +32,12 @@ def show_images(
 
         encoded_images = [np.array(x1_data), np.array(x2_data)]
         return model.predict(encoded_images)
+
+    if save_figs:
+        if os.path.exists("plots"):
+            shutil.rmtree("plots")
+
+        os.mkdir("plots")
 
     for i in range(num):
         image_path_key = list(image_paths.keys())[i]
@@ -84,6 +93,9 @@ def show_images(
             low_right.set_xlabel("Importance mask", fontsize=10)
 
             fig.show()
+
+            if save_figs:
+                fig.savefig("plots/{}_output.png".format(image_path_key))
 
 
 def _stitchImages(im1, im2):
