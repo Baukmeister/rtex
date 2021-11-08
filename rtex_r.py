@@ -16,7 +16,7 @@ def rate_images(test_case_ids, x_test, test_cases_images, clean=True, dump_file_
     if not clean and os.path.isfile(dump_file_name):
         print("Using pre-stored RTEX@R results from dump file!")
         abnormal_cases_file = open("data/abnormal_cases_images.json", "r")
-        abnormal_cases_images = abnormal_cases_file.read()
+        abnormal_cases_images = json.load(abnormal_cases_file)
         return abnormal_cases_images
     else:
         bi_cxn = load_model("data/models/iu_xray_bi_cxn.hdf5")

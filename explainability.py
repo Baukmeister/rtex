@@ -1,9 +1,10 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 import data_handler
 import data_loader
 import rtex_r
+
+# preparing the test data
+from data_visualizer import show_images
 
 data_loader.load_data()
 
@@ -20,4 +21,7 @@ test_cases_images = dict(zip(test.reports, test.images))
 test_case_ids = list(test_cases_images.keys())
 
 x_test = data_handler.encode_images(test_cases_images, "data/images/iu_xray")
-rtex_r.rate_images(test_case_ids, x_test, test_cases_images, clean=False)
+
+# running RTEX@R
+abnormal_images = rtex_r.rate_images(test_case_ids, x_test, test_cases_images, clean=False)
+show_images(list(abnormal_images.values()), 10)
