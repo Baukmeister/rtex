@@ -13,9 +13,9 @@ def show_images(
         explainability=False,
         model=None,
         img_width=224,
-        lime_samples=1000):
-    nested_list = [elem.split(";") for elem in image_paths]
-    flattened_list = [item for sublist in nested_list for item in sublist]
+        lime_samples=1000,
+        lime_features=10
+):
 
     def _predict(pasted_image):
         x1_data, x2_data = [], []
@@ -40,10 +40,15 @@ def show_images(
         )
         stitched_images = _stitchImages(img1, img2)
 
-        cax = plt.imshow(stitched_images / 2 + 0.5)
-        plt.title("Abnormal image", fontsize=25)
-        plt.xlabel("File: {}".format(image_path_key))
-        plt.show()
+        fig, axs = plt.subplots(2,2)
+        fig.suptitle("File: {}".format(image_path_key))
+        top_left = axs[0][0]
+        top_right = axs[0][1]
+        low_left = axs[1][0]
+        low_right = axs[1][1]
+
+        top_left.imshow(stitched_images / 2 + 0.5)
+        top_left.set_xlabel("Abnormal image")
 
         if explainability:
             lime_explainer = lime_image.LimeImageExplainer()
@@ -55,24 +60,30 @@ def show_images(
                 num_samples=lime_samples)
 
             # overlay
-            temp, mask = explanation.get_image_and_mask(explanation.top_labels[0], positive_only=False, num_features=10,
+            temp, mask = explanation.get_image_and_mask(explanation.top_labels[0],
+                                                        positive_only=False,
+                                                        num_features=lime_features,
                                                         hide_rest=False)
-            plt.imshow(mark_boundaries(temp / 2 + 0.5, mask))
-            plt.title("LIME explanation", fontsize=25)
-            plt.xlabel("File: {}".format(image_path_key))
-            plt.show()
+            top_right.imshow(mark_boundaries(temp / 2 + 0.5, mask))
+            top_right.set_xlabel("LIME explanation", fontsize=10)
 
             # heatmap
-
             ind = explanation.top_labels[0]
             dict_heatmap = dict(explanation.local_exp[ind])
             heatmap = np.vectorize(dict_heatmap.get)(explanation.segments)
-            plt.imshow(heatmap, cmap='RdBu', vmin=-heatmap.max(), vmax=heatmap.max())
-            plt.colorbar()
-            plt.title("Importance heatmap", fontsize=25)
-            plt.xlabel("File: {}".format(image_path_key))
-            plt.show()
+            mappable = low_left.imshow(heatmap, cmap='RdBu', vmin=-heatmap.max(), vmax=heatmap.max())
+            plt.colorbar(mappable, ax=low_left)
+            low_left.set_xlabel("Importance heatmap", fontsize=10)
 
+            # mask
+            temp, mask = explanation.get_image_and_mask(explanation.top_labels[0],
+                                                        positive_only=True,
+                                                        num_features=lime_features,
+                                                        hide_rest=True)
+            low_right.imshow(mark_boundaries(temp / 2 + 0.5, mask))
+            low_right.set_xlabel("Importance mask", fontsize=10)
+
+            fig.show()
 
 
 def _stitchImages(im1, im2):
