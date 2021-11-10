@@ -49,7 +49,7 @@ def show_images(
         )
         stitched_images = _stitchImages(img1, img2)
 
-        fig, axs = plt.subplots(2,2)
+        fig, axs = plt.subplots(2, 2)
         fig.suptitle("File: {}".format(image_path_key))
         top_left = axs[0][0]
         top_right = axs[0][1]
@@ -95,7 +95,7 @@ def show_images(
             fig.show()
 
             if save_figs:
-                fig.savefig("plots/{}_output.png".format(image_path_key))
+                fig.savefig("plots/{}_output.png".format(image_path_key), dpi=600)
 
 
 def _stitchImages(im1, im2):
@@ -110,5 +110,6 @@ def _stitchImages(im1, im2):
 
     return np.concatenate((im1, im2), axis=1).astype("double")
 
+
 def _rgb2gray(rgb):
-    return np.dot(rgb[...,:3], [0.299, 0.587, 0.144])
+    return np.dot(rgb[..., :3], [0.299, 0.587, 0.144])
