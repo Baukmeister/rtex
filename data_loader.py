@@ -15,8 +15,8 @@ def load_data():
         print("Finished downloading image tags!")
     if not os.path.isdir("data/images"):
         print("Downloading images (this may take a while) ...")
-        gdown.download("https://openi.nlm.nih.gov/imgs/collections/NLMCXR_png.tgz", "data/images.zip")
-        shutil.unpack_archive("data/images.zip", "data/images")
+        gdown.download("https://openi.nlm.nih.gov/imgs/collections/NLMCXR_png.tgz", "data/images.tgz")
+        shutil.unpack_archive("data/images.tgz", "data/images/iu_xray", format="tar")
         print("Finished downloading images!")
     if not os.path.isdir("data/models"):
         print("Downloading models ...")
