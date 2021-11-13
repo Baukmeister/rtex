@@ -177,25 +177,6 @@ def visualize_images(
         elif method == "grad":
             # Grad CAM explainer
 
-            # variable configuration
-            img_size = (224, 224)
-
-            inner_layers = model.layers[2]
-            inner_model = tf.keras.models.Model(inner_layers.inputs, inner_layers.get_layer("avg_pool").output)
-
-            # Get image embeddings
-            img_emb1 = inner_model(model.inputs[0])
-            img_emb2 = inner_model(model.inputs[1])
-            # Concatenate the two embeddings
-            concat_emb = Concatenate()([img_emb1, img_emb2])
-            # Add the classifier layer
-            abnormality_prob = Dense(1, activation="sigmoid", name="classifier",
-                                     kernel_initializer=glorot_uniform(seed=42))(concat_emb)
-
-            # Build final model
-            tmp_model = tf.keras.models.Model(inputs=model.inputs, outputs=abnormality_prob)
-            last_conv_layer_name = "relu"
-            last_layer = model.layers[2].get_layer(last_conv_layer_name)
 
 
             grad_model = tf.keras.models.Model(
@@ -250,3 +231,17 @@ def _stitchImages(im1, im2):
 
 def _rgb2gray(rgb):
     return np.dot(rgb[..., :3], [0.299, 0.587, 0.144])
+
+
+def _flatten_model(model_nested):
+    '''
+    Utility to flatten pretrained model
+    '''
+    layers_flat = []
+    for layer in model_nested.layers:
+        try:
+            layers_flat.extend(layer.layers)
+        except AttributeError:
+            layers_flat.append(layer)
+
+    return layers_flat
