@@ -1,6 +1,8 @@
 import shutil
-from keras.applications.densenet import decode_predictions, preprocess_input
 
+from tensorflow.keras.layers import Dense, Concatenate
+from tensorflow.keras.initializers import glorot_uniform
+import keras as keras
 import matplotlib.pyplot as plt
 import os
 from lime import lime_image
@@ -133,7 +135,7 @@ def visualize_images(
         top_left.imshow(stitched_images / 2 + 0.5)
         top_left.set_xlabel("Abnormal image")
 
-        if method is "lime":
+        if method == "lime":
             # Lime explainer
             lime_explainer = lime_image.LimeImageExplainer()
             explanation = lime_explainer.explain_instance(
@@ -172,24 +174,59 @@ def visualize_images(
             if save_figs:
                 fig.savefig("plots/{}_output.png".format(image_path_key))
 
-        elif method is "grad":
+        elif method == "grad":
             # Grad CAM explainer
 
             # variable configuration
             img_size = (224, 224)
-            last_conv_layer_name = "concept_outputs"
 
-            # Prepare image
-            img_array = get_img_array(stitched_images, img_size)
+            inner_layers = model.layers[2]
+            inner_model = tf.keras.models.Model(inner_layers.inputs, inner_layers.get_layer("avg_pool").output)
 
-            # Remove last layers softmax
-            # model.layers[-1].activation = None
+            # Get image embeddings
+            img_emb1 = inner_model(model.inputs[0])
+            img_emb2 = inner_model(model.inputs[1])
+            # Concatenate the two embeddings
+            concat_emb = Concatenate()([img_emb1, img_emb2])
+            # Add the classifier layer
+            abnormality_prob = Dense(1, activation="sigmoid", name="classifier",
+                                     kernel_initializer=glorot_uniform(seed=42))(concat_emb)
 
-            # predicted class
-            preds = _predict()
+            # Build final model
+            tmp_model = tf.keras.models.Model(inputs=model.inputs, outputs=abnormality_prob)
+            last_conv_layer_name = "relu"
+            last_layer = model.layers[2].get_layer(last_conv_layer_name)
 
-            # Generate class activation heatmap
-            grad_cam_heatmap = make_gradcam_heatmap(img_array, model, last_conv_layer_name)
+
+            grad_model = tf.keras.models.Model(
+                tf.keras.utils.get_source_inputs(tmp_model.inputs), [inner_model.output, model.output]
+            )
+
+            pred_index = 0
+
+            with tf.GradientTape() as tape:
+                last_conv_layer_output, preds = grad_model(encoded_images)
+                if pred_index is None:
+                    pred_index = tf.argmax(preds[0])
+                class_channel = preds[:, pred_index]
+
+            # This is the gradient of the output neuron (top predicted or chosen)
+            # with regard to the output feature map of the last conv layer
+            grads = tape.gradient(class_channel, last_conv_layer_output)
+
+            # This is a vector where each entry is the mean intensity of the gradient
+            # over a specific feature map channel
+            pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+
+            # We multiply each channel in the feature map array
+            # by "how important this channel is" with regard to the top predicted class
+            # then sum all the channels to obtain the heatmap class activation
+            last_conv_layer_output = last_conv_layer_output[0]
+            heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
+            heatmap = tf.squeeze(heatmap)
+
+            # For visualization purpose, we will also normalize the heatmap between 0 & 1
+            heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
 
             # Display heatmap
             plt.matshow(heatmap)
