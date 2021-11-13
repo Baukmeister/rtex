@@ -1,8 +1,8 @@
 import shutil
 
+from tensorflow.keras.layers import Dense, Concatenate
+from tensorflow.keras.initializers import glorot_uniform
 import keras as keras
-from keras import models, layers
-from gradcam import VizGradCAM
 import matplotlib.pyplot as plt
 import os
 from lime import lime_image
@@ -177,21 +177,10 @@ def visualize_images(
         elif method == "grad":
             # Grad CAM explainer
 
-            # variable configuration
-            img_size = (224, 224)
 
-            inner_layers = model.layers[2]
-            inner_model = tf.keras.models.Model(inner_layers.inputs, inner_layers.get_layer("avg_pool").output)
-            last_conv_layer = inner_model.get_layer("relu")
-
-            s_i_model = models.Sequential()
-            s_i_model.add(inner_model)
-            s_i_model.add(layers.RepeatVector(2))
-            s_i_model.add(layers.Reshape((1, 2048)))
-            s_i_model.add(model.layers[4])
 
             grad_model = tf.keras.models.Model(
-                tf.keras.utils.get_source_inputs(s_i_model.inputs), [last_conv_layer.output, s_i_model.output]
+                tf.keras.utils.get_source_inputs(tmp_model.inputs), [inner_model.output, model.output]
             )
 
             pred_index = 0
@@ -242,3 +231,17 @@ def _stitchImages(im1, im2):
 
 def _rgb2gray(rgb):
     return np.dot(rgb[..., :3], [0.299, 0.587, 0.144])
+
+
+def _flatten_model(model_nested):
+    '''
+    Utility to flatten pretrained model
+    '''
+    layers_flat = []
+    for layer in model_nested.layers:
+        try:
+            layers_flat.extend(layer.layers)
+        except AttributeError:
+            layers_flat.append(layer)
+
+    return layers_flat
