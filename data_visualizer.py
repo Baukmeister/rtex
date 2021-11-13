@@ -1,8 +1,8 @@
 import shutil
 
-from tensorflow.keras.layers import Dense, Concatenate
-from tensorflow.keras.initializers import glorot_uniform
 import keras as keras
+from keras import models, layers
+from gradcam import VizGradCAM
 import matplotlib.pyplot as plt
 import os
 from lime import lime_image
@@ -182,24 +182,16 @@ def visualize_images(
 
             inner_layers = model.layers[2]
             inner_model = tf.keras.models.Model(inner_layers.inputs, inner_layers.get_layer("avg_pool").output)
+            last_conv_layer = inner_model.get_layer("relu")
 
-            # Get image embeddings
-            img_emb1 = inner_model(model.inputs[0])
-            img_emb2 = inner_model(model.inputs[1])
-            # Concatenate the two embeddings
-            concat_emb = Concatenate()([img_emb1, img_emb2])
-            # Add the classifier layer
-            abnormality_prob = Dense(1, activation="sigmoid", name="classifier",
-                                     kernel_initializer=glorot_uniform(seed=42))(concat_emb)
-
-            # Build final model
-            tmp_model = tf.keras.models.Model(inputs=model.inputs, outputs=abnormality_prob)
-            last_conv_layer_name = "relu"
-            last_layer = model.layers[2].get_layer(last_conv_layer_name)
-
+            s_i_model = models.Sequential()
+            s_i_model.add(inner_model)
+            s_i_model.add(layers.RepeatVector(2))
+            s_i_model.add(layers.Reshape((1, 2048)))
+            s_i_model.add(model.layers[4])
 
             grad_model = tf.keras.models.Model(
-                tf.keras.utils.get_source_inputs(tmp_model.inputs), [inner_model.output, model.output]
+                tf.keras.utils.get_source_inputs(s_i_model.inputs), [last_conv_layer.output, s_i_model.output]
             )
 
             pred_index = 0
