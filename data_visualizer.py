@@ -1,8 +1,7 @@
 import shutil
 
-from tensorflow.keras.layers import Dense, Concatenate
-from tensorflow.keras.initializers import glorot_uniform
 import keras as keras
+from keras import models, layers
 import matplotlib.pyplot as plt
 import os
 from lime import lime_image
@@ -177,19 +176,31 @@ def visualize_images(
         elif method == "grad":
             # Grad CAM explainer
 
+            # variable configuration
+            img_size = (224, 224)
 
+            inner_layers = model.layers[2]
+            inner_model = tf.keras.models.Model(inner_layers.inputs, inner_layers.get_layer("avg_pool").output)
+
+            s_i_model = models.Sequential()
+            s_i_model.inputs = model.inputs
+            s_i_model.add(inner_model)
+
+            s_i_model.add(layers.RepeatVector(2))
+            s_i_model.add(layers.Reshape((1, 2048)))
+            s_i_model.add(model.layers[4])
+
+            last_conv_layer = s_i_model.layers[0].get_layer('conv5_block16_2_conv')
 
             grad_model = tf.keras.models.Model(
-                tf.keras.utils.get_source_inputs(tmp_model.inputs), [inner_model.output, model.output]
+                [s_i_model.inputs, s_i_model.layers[0].inputs], [last_conv_layer.output, s_i_model.output]
             )
 
             pred_index = 0
 
             with tf.GradientTape() as tape:
                 last_conv_layer_output, preds = grad_model(encoded_images)
-                if pred_index is None:
-                    pred_index = tf.argmax(preds[0])
-                class_channel = preds[:, pred_index]
+                class_channel = preds[:, 0]
 
             # This is the gradient of the output neuron (top predicted or chosen)
             # with regard to the output feature map of the last conv layer
@@ -231,17 +242,3 @@ def _stitchImages(im1, im2):
 
 def _rgb2gray(rgb):
     return np.dot(rgb[..., :3], [0.299, 0.587, 0.144])
-
-
-def _flatten_model(model_nested):
-    '''
-    Utility to flatten pretrained model
-    '''
-    layers_flat = []
-    for layer in model_nested.layers:
-        try:
-            layers_flat.extend(layer.layers)
-        except AttributeError:
-            layers_flat.append(layer)
-
-    return layers_flat
