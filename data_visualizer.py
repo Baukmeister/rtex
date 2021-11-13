@@ -12,18 +12,17 @@ import tensorflow as tf
 import matplotlib.cm as cm
 
 
-def show_images(
+def visualize_images(
         image_paths,
         num,
         path_prefix="data/images/iu_xray/",
-        explainability=False,
         model=None,
         img_width=224,
+        method=None,
         lime_samples=1000,
         lime_features=10,
         save_figs=False
 ):
-
     def _predict(pasted_image):
         x1_data, x2_data = [], []
 
@@ -36,7 +35,7 @@ def show_images(
 
         encoded_images = [np.array(x1_data), np.array(x2_data)]
         return model.predict(encoded_images)
-    
+
     # Grad CAM methods
     def get_img_array(img_path, size):
         # `img` is a PIL image of size 224x224
@@ -46,7 +45,7 @@ def show_images(
         # We add a dimension to transform our array into a "batch" of size (1, 224, 224, 3)
         array = np.expand_dims(array, axis=0)
         return array
-    
+
     def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
         # First, we create a model that maps the input image to the activations
         # of the last conv layer as well as the output predictions
@@ -80,7 +79,7 @@ def show_images(
         # For visualization purpose, we will also normalize the heatmap between 0 & 1
         heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
         return heatmap.numpy()
-    
+
     def rescale_heatmap(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
         # Load the original image
         img = keras.preprocessing.image.load_img(img_path)
@@ -108,7 +107,6 @@ def show_images(
         # Save the superimposed image
         superimposed_img.save(cam_path)
 
-    
     if save_figs:
         if os.path.exists("plots"):
             shutil.rmtree("plots")
@@ -125,7 +123,7 @@ def show_images(
         )
         stitched_images = _stitchImages(img1, img2)
 
-        fig, axs = plt.subplots(2,2)
+        fig, axs = plt.subplots(2, 2)
         fig.suptitle("File: {}".format(image_path_key))
         top_left = axs[0][0]
         top_right = axs[0][1]
@@ -135,7 +133,7 @@ def show_images(
         top_left.imshow(stitched_images / 2 + 0.5)
         top_left.set_xlabel("Abnormal image")
 
-        if explainability:
+        if method is "lime":
             # Lime explainer
             lime_explainer = lime_image.LimeImageExplainer()
             explanation = lime_explainer.explain_instance(
@@ -174,18 +172,19 @@ def show_images(
             if save_figs:
                 fig.savefig("plots/{}_output.png".format(image_path_key))
 
+        elif method is "grad":
             # Grad CAM explainer
 
-            # variable configuration 
+            # variable configuration
             img_size = (224, 224)
             last_conv_layer_name = "concept_outputs"
-            
+
             # Prepare image
             img_array = get_img_array(stitched_images, img_size)
 
             # Remove last layers softmax
-            #model.layers[-1].activation = None
-            
+            # model.layers[-1].activation = None
+
             # predicted class
             preds = _predict()
 
@@ -211,5 +210,6 @@ def _stitchImages(im1, im2):
 
     return np.concatenate((im1, im2), axis=1).astype("double")
 
+
 def _rgb2gray(rgb):
-    return np.dot(rgb[...,:3], [0.299, 0.587, 0.144])
+    return np.dot(rgb[..., :3], [0.299, 0.587, 0.144])

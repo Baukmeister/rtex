@@ -2,7 +2,7 @@ import pandas as pd
 import data_handler
 import data_loader
 import rtex_r
-from data_visualizer import show_images
+from data_visualizer import visualize_images
 
 # preparing the test data
 
@@ -28,11 +28,11 @@ abnormal_test_case_images = {k: test_cases_images[k] for k in abnormal_images.ke
 
 print(rtex_model.summary())
 
-show_images(
+visualize_images(
     image_paths=abnormal_test_case_images,
     num=1,
-    explainability=True,
     model=rtex_model,
+    method="grad",
     lime_samples=1000,
     lime_features=8,
     save_figs=True
