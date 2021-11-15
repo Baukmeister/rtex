@@ -183,17 +183,16 @@ def visualize_images(
             inner_model = tf.keras.models.Model(inner_layers.inputs, inner_layers.get_layer("avg_pool").output)
 
             s_i_model = models.Sequential()
-            s_i_model.inputs = model.inputs
             s_i_model.add(inner_model)
 
             s_i_model.add(layers.RepeatVector(2))
             s_i_model.add(layers.Reshape((1, 2048)))
             s_i_model.add(model.layers[4])
 
-            last_conv_layer = s_i_model.layers[0].get_layer('conv5_block16_2_conv')
+            last_conv_layer = s_i_model.layers[0].get_layer('relu')
 
-            grad_model = tf.keras.models.Model(
-                [s_i_model.inputs, s_i_model.layers[0].inputs], [last_conv_layer.output, s_i_model.output]
+            grad_model = models.Model(
+                [inner_model.inputs, s_i_model.inputs], [last_conv_layer.output, s_i_model.output]
             )
 
             pred_index = 0
@@ -204,7 +203,12 @@ def visualize_images(
 
             # This is the gradient of the output neuron (top predicted or chosen)
             # with regard to the output feature map of the last conv layer
+            # TODO: figure out why this returns None
             grads = tape.gradient(class_channel, last_conv_layer_output)
+
+            if grads is None:
+                print("There are currently unsolved issues regarding GradCam that prevent this option from being used!")
+                return
 
             # This is a vector where each entry is the mean intensity of the gradient
             # over a specific feature map channel
@@ -223,8 +227,6 @@ def visualize_images(
             # Display heatmap
             plt.matshow(heatmap)
             plt.show()
-
-            # save rescaled heatmap on xray in plots folder
 
 
 def _stitchImages(im1, im2):
