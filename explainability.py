@@ -2,7 +2,7 @@ import pandas as pd
 import data_handler
 import data_loader
 import rtex_r
-from data_visualizer import show_images
+from data_visualizer import visualize_images
 
 # preparing the test data
 
@@ -26,12 +26,12 @@ x_test = data_handler.encode_images(test_cases_images, "data/images/iu_xray")
 abnormal_images, rtex_model = rtex_r.rate_images(test_case_ids, x_test, test_cases_images, clean=False)
 abnormal_test_case_images = {k: test_cases_images[k] for k in abnormal_images.keys()}
 
-show_images(
+visualize_images(
     image_paths=abnormal_test_case_images,
-    num=10,
-    explainability=True,
+    num=1,
     model=rtex_model,
-    lime_samples=800,
-    lime_features=9,
+    method="grad",
+    lime_samples=1000,
+    lime_features=8,
     save_figs=True
 )
