@@ -30,8 +30,8 @@ visualize_images(
     image_paths=abnormal_test_case_images,
     num=1,
     model=rtex_model,
-    method="grad",
-    lime_samples=1000,
+    method="lime",
+    lime_samples=100,
     lime_features=8,
     save_figs=True
 )
