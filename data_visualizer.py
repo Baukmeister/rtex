@@ -22,7 +22,8 @@ def visualize_images(
         method=None,
         lime_samples=1000,
         lime_features=10,
-        save_figs=False
+        save_figs=False,
+        abnormal=True
 ):
     def _predict(pasted_image):
         x1_data, x2_data = [], []
@@ -35,7 +36,11 @@ def visualize_images(
             x2_data.append(img2)
 
         encoded_images = [np.array(x1_data), np.array(x2_data)]
-        return model.predict(encoded_images)
+        model_predictions = model.predict(encoded_images)
+        if abnormal:
+            return model_predictions
+        else:
+            return 1 - model_predictions
 
     # Grad CAM methods
     def get_img_array(img_path, size):
@@ -125,14 +130,21 @@ def visualize_images(
         stitched_images = _stitchImages(img1, img2)
 
         fig, axs = plt.subplots(2, 2)
-        fig.suptitle("File: {}".format(image_path_key))
+        if abnormal:
+            fig.suptitle("File: {} - Classified as abnormal".format(image_path_key))
+        else:
+            fig.suptitle("File: {} - Classified as normal".format(image_path_key))
+
         top_left = axs[0][0]
         top_right = axs[0][1]
         low_left = axs[1][0]
         low_right = axs[1][1]
 
         top_left.imshow(stitched_images / 2 + 0.5)
-        top_left.set_xlabel("Abnormal image")
+        if abnormal:
+            top_left.set_xlabel("Abnormal image")
+        else:
+            top_left.set_xlabel("Normal image")
 
         if method == "lime":
             # Lime explainer
