@@ -23,7 +23,7 @@ test_case_ids = list(test_cases_images.keys())
 x_test = data_handler.encode_images(test_cases_images, "data/images/iu_xray")
 
 # running RTEX@R
-use_abnormal_images = False
+use_abnormal_images = True
 
 abnormal_images, rtex_model = rtex_r.rate_images(
     test_case_ids,
@@ -36,10 +36,10 @@ abnormal_test_case_images = {k: test_cases_images[k] for k in abnormal_images.ke
 
 visualize_images(
     image_paths=abnormal_test_case_images,
-    num=20,
+    num=8,
     model=rtex_model,
     method="lime",
-    lime_samples=1000,
+    lime_samples=900,
     lime_features=10,
     save_figs=True,
     abnormal=use_abnormal_images
