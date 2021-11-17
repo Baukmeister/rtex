@@ -20,7 +20,13 @@ def load_data():
         print("Finished downloading images!")
     if not os.path.isdir("data/models"):
         print("Downloading models ...")
-        gdown.download("https://drive.google.com/uc?id=1D8oHHSib1k8QHnDD_LLzf6lLbyjrtfOm", "data/models.zip")
-        shutil.unpack_archive("data/models.zip", "data/models")
+        #rtex@R
+        gdown.download("https://drive.google.com/uc?id=1D8oHHSib1k8QHnDD_LLzf6lLbyjrtfOm", "data/rtex_r.zip")
+        shutil.unpack_archive("data/rtex_r.zip", "data/models/rtex_r")
+
+        #rtex@T
+        gdown.download("https://drive.google.com/uc?id=1MaQW72B1bOULBwvr4ieqE6lONPkqHgil", "data/rtex_t.zip")
+        shutil.unpack_archive("data/rtex_t.zip", "data/models/rtex_t")
+
         print("Finished downloading models!")
 
