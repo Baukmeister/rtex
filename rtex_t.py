@@ -1,14 +1,14 @@
+import numpy as np
 import pandas as pd
 from keras.models import load_model
 import json
 import os
 
-import data_handler
-
 
 def tag_images(
         test_cases_images,
-        tag_list_file
+        tag_list_file,
+        clean=False
 ):
     """
     Performs the tagging of abnormal images using RTEX@R
@@ -21,12 +21,22 @@ def tag_images(
     :param num: number of images that should be returned
     :param abnormal: whether to return abnormal cases or not
     """
-    rtex_t_model = load_model("data/models/rtex_r/iu_xray_bi_cxn.hdf5")
+
+    rtex_t_model = load_model("data/models/rtex_t/iu_xray_tag_cxn.hdf5")
+    dump_file_name = "data/rtex_t_tags_pre_calc.txt"
+
+    if not clean and os.path.isfile(dump_file_name):
+        print("Using pre-stored RTEX@T results from dump file!")
+        predicted_tags_file = open(dump_file_name, "r")
+        test_tag_probs = np.loadtxt(predicted_tags_file)
+    else:
+        print("Performing RTEX@T predictions!")
+        test_tag_probs = rtex_t_model.predict(test_cases_images, batch_size=16, verbose=1)
+        predicted_tags_file = open(dump_file_name, "w")
+        np.savetxt(predicted_tags_file, test_tag_probs)
+
     tag_df = pd.read_csv(tag_list_file, header=None)
     tag_list = tag_df[0].to_list()
-
-    # Get predictions for test set
-    test_tag_probs = rtex_t_model.predict(test_cases_images, batch_size=16, verbose=1)
 
     best_threshold = 0.097
 

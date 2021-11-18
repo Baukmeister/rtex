@@ -23,7 +23,7 @@ def rate_images(
     """
     rtex_r_model = load_model("data/models/rtex_r/iu_xray_bi_cxn.hdf5")
 
-    dump_file_name = "data/case_probs_pre_calc.json"
+    dump_file_name = "data/rtex_r_case_probs_pre_calc.json"
 
     if not clean and os.path.isfile(dump_file_name):
         print("Using pre-stored RTEX@R results from dump file!")
