@@ -5,8 +5,10 @@ import data_handler
 import data_loader
 import rtex_r
 import rtex_t
-from data_visualizer import plot_explainability_rtex_r, plot_explainability_rtex_t
 import os
+
+from lime_rtex_r import plot_explainability_rtex_r
+from lime_rtex_t import plot_explainability_rtex_t
 
 eval_modules = [
     #"rtex_r",
