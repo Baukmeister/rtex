@@ -1,19 +1,17 @@
+import os
 import shutil
 
-import keras as keras
-from keras import models, layers
 import matplotlib.pyplot as plt
-import os
+import numpy as np
+import tensorflow as tf
+from keras import models, layers
 from lime import lime_image
 from skimage.segmentation import mark_boundaries
-import numpy as np
+
 import data_handler
-from tensorflow import keras
-import tensorflow as tf
-import matplotlib.cm as cm
 
 
-def visualize_images(
+def plot_explainability_rtex_r(
         image_paths,
         num,
         path_prefix="data/images/iu_xray/",
@@ -42,82 +40,11 @@ def visualize_images(
         else:
             return 1 - model_predictions
 
-    # Grad CAM methods
-    def get_img_array(img_path, size):
-        # `img` is a PIL image of size 224x224
-        img = keras.preprocessing.image.load_img(img_path, target_size=size)
-        # `array` is a float32 Numpy array of shape (224, 224, 3)
-        array = keras.preprocessing.image.img_to_array(img)
-        # We add a dimension to transform our array into a "batch" of size (1, 224, 224, 3)
-        array = np.expand_dims(array, axis=0)
-        return array
-
-    def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
-        # First, we create a model that maps the input image to the activations
-        # of the last conv layer as well as the output predictions
-        grad_model = tf.keras.models.Model(
-            [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
-        )
-
-        # Then, we compute the gradient of the top predicted class for our input image
-        # with respect to the activations of the last conv layer
-        with tf.GradientTape() as tape:
-            last_conv_layer_output, preds = grad_model(img_array)
-            if pred_index is None:
-                pred_index = tf.argmax(preds[0])
-            class_channel = preds[:, pred_index]
-
-        # This is the gradient of the output neuron (top predicted or chosen)
-        # with regard to the output feature map of the last conv layer
-        grads = tape.gradient(class_channel, last_conv_layer_output)
-
-        # This is a vector where each entry is the mean intensity of the gradient
-        # over a specific feature map channel
-        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-
-        # We multiply each channel in the feature map array
-        # by "how important this channel is" with regard to the top predicted class
-        # then sum all the channels to obtain the heatmap class activation
-        last_conv_layer_output = last_conv_layer_output[0]
-        heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
-        heatmap = tf.squeeze(heatmap)
-
-        # For visualization purpose, we will also normalize the heatmap between 0 & 1
-        heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-        return heatmap.numpy()
-
-    def rescale_heatmap(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
-        # Load the original image
-        img = keras.preprocessing.image.load_img(img_path)
-        img = keras.preprocessing.image.img_to_array(img)
-
-        # Rescale heatmap to a range 0-255
-        heatmap = np.uint8(255 * heatmap)
-
-        # Use jet colormap to colorize heatmap
-        jet = cm.get_cmap("jet")
-
-        # Use RGB values of the colormap
-        jet_colors = jet(np.arange(256))[:, :3]
-        jet_heatmap = jet_colors[heatmap]
-
-        # Create an image with RGB colorized heatmap
-        jet_heatmap = keras.preprocessing.image.array_to_img(jet_heatmap)
-        jet_heatmap = jet_heatmap.resize((img.shape[1], img.shape[0]))
-        jet_heatmap = keras.preprocessing.image.img_to_array(jet_heatmap)
-
-        # Superimpose the heatmap on original image
-        superimposed_img = jet_heatmap * alpha + img
-        superimposed_img = keras.preprocessing.image.array_to_img(superimposed_img)
-
-        # Save the superimposed image
-        superimposed_img.save(cam_path)
-
     if save_figs:
-        if os.path.exists("plots"):
-            shutil.rmtree("plots")
+        if os.path.exists("rtex_r_plots"):
+            shutil.rmtree("rtex_r_plots")
 
-        os.mkdir("plots")
+        os.mkdir("rtex_r_plots")
 
     for i in range(num):
         image_path_key = list(image_paths.keys())[i]
@@ -239,6 +166,102 @@ def visualize_images(
             # Display heatmap
             plt.matshow(heatmap)
             plt.show()
+
+def plot_explainability_rtex_t(
+        image_tags,
+        image_paths,
+        num,
+        all_tags,
+        path_prefix="data/images/iu_xray/",
+        model=None,
+        img_width=224,
+        method=None,
+        lime_samples=1000,
+        lime_features=10,
+        save_figs=False,
+):
+    def _predict(pasted_image):
+        x1_data, x2_data = [], []
+
+        for image in pasted_image:
+            img1 = image[:, 0:img_width, :]
+            img2 = image[:, img_width:, :]
+
+            x1_data.append(img1)
+            x2_data.append(img2)
+
+        encoded_images = [np.array(x1_data), np.array(x2_data)]
+        model_predictions = model.predict(encoded_images)
+
+        return model_predictions
+
+    if save_figs:
+        if os.path.exists("rtex_t_plots"):
+            shutil.rmtree("rtex_t_plots")
+
+        os.mkdir("rtex_t_plots")
+
+    for i in range(num):
+        image_path_key = list(image_tags.keys())[i]
+
+        encoded_images, img1, img2 = data_handler.encode_images(
+            {image_path_key: image_paths[image_path_key]},
+            path_prefix,
+            return_images=True
+        )
+        stitched_images = _stitchImages(img1, img2)
+
+        fig, axs = plt.subplots(2, 2)
+
+        fig.suptitle("File: {} - Tag: ".format(image_path_key))
+
+        top_left = axs[0][0]
+        top_right = axs[0][1]
+        low_left = axs[1][0]
+        low_right = axs[1][1]
+
+        top_left.imshow(stitched_images / 2 + 0.5)
+        top_left.set_xlabel("Input image")
+
+        if method == "lime":
+            # Lime explainer
+            lime_explainer = lime_image.LimeImageExplainer()
+            explanation = lime_explainer.explain_instance(
+                stitched_images,
+                _predict,
+                top_labels=5,
+                hide_color=0,
+                num_samples=lime_samples)
+
+            # overlay
+            temp, mask = explanation.get_image_and_mask(explanation.top_labels[0],
+                                                        positive_only=False,
+                                                        num_features=lime_features,
+                                                        hide_rest=False)
+            #top_right.imshow(mark_boundaries(temp / 2 + 0.5, mask))
+            top_right.imshow(mask)
+            top_right.set_xlabel("LIME explanation", fontsize=10)
+
+            # heatmap
+            ind = explanation.top_labels[0]
+            dict_heatmap = dict(explanation.local_exp[ind])
+            heatmap = np.vectorize(dict_heatmap.get)(explanation.segments)
+            mappable = low_left.imshow(heatmap, cmap='RdBu', vmin=-heatmap.max(), vmax=heatmap.max())
+            plt.colorbar(mappable, ax=low_left)
+            low_left.set_xlabel("Importance heatmap", fontsize=10)
+
+            # mask
+            temp, mask = explanation.get_image_and_mask(explanation.top_labels[0],
+                                                        positive_only=True,
+                                                        num_features=lime_features,
+                                                        hide_rest=True)
+            low_right.imshow(mark_boundaries(temp / 2 + 0.5, mask))
+            low_right.set_xlabel("Importance mask", fontsize=10)
+
+            fig.show()
+
+            if save_figs:
+                fig.savefig("plots/{}_output.png".format(image_path_key), dpi=600)
 
 
 def _stitchImages(im1, im2):

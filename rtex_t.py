@@ -6,7 +6,8 @@ import os
 
 
 def tag_images(
-        test_cases_images,
+        x_test,
+        test_case_images,
         tag_list_file,
         clean=False
 ):
@@ -14,7 +15,7 @@ def tag_images(
     Performs the tagging of abnormal images using RTEX@R
     :param test_case_ids:
     :param x_test:
-    :param test_cases_images:
+    :param x_test:
     :param tag_list_file:
     :param clean: if True the prediction is performed in any case if False a dump file is loaded if it exists
     :return: a dict containing the abnormal image paths
@@ -31,7 +32,7 @@ def tag_images(
         test_tag_probs = np.loadtxt(predicted_tags_file)
     else:
         print("Performing RTEX@T predictions!")
-        test_tag_probs = rtex_t_model.predict(test_cases_images, batch_size=16, verbose=1)
+        test_tag_probs = rtex_t_model.predict(x_test, batch_size=16, verbose=1)
         predicted_tags_file = open(dump_file_name, "w")
         np.savetxt(predicted_tags_file, test_tag_probs)
 
@@ -47,7 +48,7 @@ def tag_images(
         for j in range(len(tag_list)):
             if test_tag_probs[i, j] >= best_threshold:
                 predicted_tags.append(tag_list[j])
-        tagging_results[list(test_cases_images.keys())[i]] = ";".join(predicted_tags)
+        tagging_results[list(test_case_images.keys())[i]] = ";".join(predicted_tags)
 
-    results = list(tagging_results.items())
-    return results, rtex_t_model
+    results = tagging_results
+    return results, tag_list, rtex_t_model

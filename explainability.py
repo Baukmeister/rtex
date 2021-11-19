@@ -3,7 +3,7 @@ import data_handler
 import data_loader
 import rtex_r
 import rtex_t
-from data_visualizer import visualize_images
+from data_visualizer import plot_explainability_rtex_r, plot_explainability_rtex_t
 
 eval_modules = [
     #"rtex_r"
@@ -34,7 +34,7 @@ for module in eval_modules:
         # running RTEX@R
         use_abnormal_images = False
 
-        abnormal_images, rtex_model = rtex_r.rate_images(
+        abnormal_images, rtex_r_model = rtex_r.rate_images(
             test_case_ids,
             x_test,
             test_cases_images,
@@ -43,10 +43,10 @@ for module in eval_modules:
 
         abnormal_test_case_images = {k: test_cases_images[k] for k in abnormal_images.keys()}
 
-        visualize_images(
+        plot_explainability_rtex_r(
             image_paths=abnormal_test_case_images,
             num=20,
-            model=rtex_model,
+            model=rtex_r_model,
             method="lime",
             lime_samples=1000,
             lime_features=10,
@@ -55,8 +55,19 @@ for module in eval_modules:
         )
 
     elif module == "rtex_t":
-        image_tags, rtex_t_model = rtex_t.tag_images(
+        image_tags, all_tags, rtex_t_model = rtex_t.tag_images(
             x_test,
+            test_cases_images,
             "data/tags/mti_tags.csv"
         )
 
+        plot_explainability_rtex_t(
+            image_tags,
+            all_tags=all_tags,
+            image_paths=test_cases_images,
+            num=1,
+            model=rtex_t_model,
+            method="lime",
+            lime_samples=40,
+            lime_features=10
+        )
