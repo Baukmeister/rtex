@@ -3,6 +3,7 @@ import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from keras import models, layers
 from lime import lime_image
@@ -23,7 +24,7 @@ def plot_explainability_rtex_r(
         save_figs=False,
         abnormal=True
 ):
-    def _predict(pasted_image):
+    def _predict_rtex_r(pasted_image):
         x1_data, x2_data = [], []
 
         for image in pasted_image:
@@ -40,11 +41,12 @@ def plot_explainability_rtex_r(
         else:
             return 1 - model_predictions
 
+    plots_folder = "plots/rtex_r"
     if save_figs:
-        if os.path.exists("rtex_r_plots"):
-            shutil.rmtree("rtex_r_plots")
+        if os.path.exists(plots_folder):
+            shutil.rmtree(plots_folder)
 
-        os.mkdir("rtex_r_plots")
+        os.mkdir(plots_folder)
 
     for i in range(num):
         image_path_key = list(image_paths.keys())[i]
@@ -78,7 +80,7 @@ def plot_explainability_rtex_r(
             lime_explainer = lime_image.LimeImageExplainer()
             explanation = lime_explainer.explain_instance(
                 stitched_images,
-                _predict,
+                _predict_rtex_r,
                 top_labels=1,
                 hide_color=0,
                 num_samples=lime_samples)
@@ -110,7 +112,7 @@ def plot_explainability_rtex_r(
             fig.show()
 
             if save_figs:
-                fig.savefig("plots/{}_output.png".format(image_path_key), dpi=600)
+                fig.savefig("{}/{}_output.png".format(plots_folder, image_path_key), dpi=600)
 
         elif method == "grad":
             # Grad CAM explainer
@@ -167,12 +169,14 @@ def plot_explainability_rtex_r(
             plt.matshow(heatmap)
             plt.show()
 
+
 def plot_explainability_rtex_t(
         image_tags,
         image_paths,
         num,
         all_tags,
         path_prefix="data/images/iu_xray/",
+        num_top_labels=5,
         model=None,
         img_width=224,
         method=None,
@@ -180,7 +184,7 @@ def plot_explainability_rtex_t(
         lime_features=10,
         save_figs=False,
 ):
-    def _predict(pasted_image):
+    def _predict_rtex_t(pasted_image):
         x1_data, x2_data = [], []
 
         for image in pasted_image:
@@ -195,11 +199,15 @@ def plot_explainability_rtex_t(
 
         return model_predictions
 
-    if save_figs:
-        if os.path.exists("rtex_t_plots"):
-            shutil.rmtree("rtex_t_plots")
+    plots_folder = "plots/rtex_t"
 
-        os.mkdir("rtex_t_plots")
+    all_tags_series = pd.Series(all_tags)
+
+    if save_figs:
+        if os.path.exists(plots_folder):
+            shutil.rmtree(plots_folder)
+
+        os.mkdir(plots_folder)
 
     for i in range(num):
         image_path_key = list(image_tags.keys())[i]
@@ -211,57 +219,62 @@ def plot_explainability_rtex_t(
         )
         stitched_images = _stitchImages(img1, img2)
 
-        fig, axs = plt.subplots(2, 2)
-
-        fig.suptitle("File: {} - Tag: ".format(image_path_key))
-
-        top_left = axs[0][0]
-        top_right = axs[0][1]
-        low_left = axs[1][0]
-        low_right = axs[1][1]
-
-        top_left.imshow(stitched_images / 2 + 0.5)
-        top_left.set_xlabel("Input image")
-
         if method == "lime":
+
             # Lime explainer
             lime_explainer = lime_image.LimeImageExplainer()
             explanation = lime_explainer.explain_instance(
                 stitched_images,
-                _predict,
-                top_labels=5,
+                _predict_rtex_t,
                 hide_color=0,
                 num_samples=lime_samples)
 
-            # overlay
-            temp, mask = explanation.get_image_and_mask(explanation.top_labels[0],
-                                                        positive_only=False,
-                                                        num_features=lime_features,
-                                                        hide_rest=False)
-            #top_right.imshow(mark_boundaries(temp / 2 + 0.5, mask))
-            top_right.imshow(mask)
-            top_right.set_xlabel("LIME explanation", fontsize=10)
+            for label_idx in range(num_top_labels):
 
-            # heatmap
-            ind = explanation.top_labels[0]
-            dict_heatmap = dict(explanation.local_exp[ind])
-            heatmap = np.vectorize(dict_heatmap.get)(explanation.segments)
-            mappable = low_left.imshow(heatmap, cmap='RdBu', vmin=-heatmap.max(), vmax=heatmap.max())
-            plt.colorbar(mappable, ax=low_left)
-            low_left.set_xlabel("Importance heatmap", fontsize=10)
+                # overlay
+                temp, mask = explanation.get_image_and_mask(explanation.top_labels[label_idx],
+                                                            positive_only=False,
+                                                            num_features=lime_features,
+                                                            hide_rest=False)
 
-            # mask
-            temp, mask = explanation.get_image_and_mask(explanation.top_labels[0],
-                                                        positive_only=True,
-                                                        num_features=lime_features,
-                                                        hide_rest=True)
-            low_right.imshow(mark_boundaries(temp / 2 + 0.5, mask))
-            low_right.set_xlabel("Importance mask", fontsize=10)
+                current_label = all_tags_series[explanation.top_labels[label_idx]]
 
-            fig.show()
+                fig, axs = plt.subplots(2, 2)
 
-            if save_figs:
-                fig.savefig("plots/{}_output.png".format(image_path_key), dpi=600)
+                fig.suptitle("File:{} - Tagged as: {}".format(image_path_key, current_label))
+
+                top_left = axs[0][0]
+                top_right = axs[0][1]
+                low_left = axs[1][0]
+                low_right = axs[1][1]
+
+                top_left.imshow(stitched_images / 2 + 0.5)
+                top_left.set_xlabel("Input image")
+
+                top_right.imshow(mark_boundaries(temp / 2 + 0.5, mask))
+                top_right.set_xlabel("LIME explanation", fontsize=10)
+
+                # heatmap
+                ind = explanation.top_labels[label_idx]
+                dict_heatmap = dict(explanation.local_exp[ind])
+                heatmap = np.vectorize(dict_heatmap.get)(explanation.segments)
+                mappable = low_left.imshow(heatmap, cmap='RdBu', vmin=-heatmap.max(), vmax=heatmap.max())
+                plt.colorbar(mappable, ax=low_left)
+                low_left.set_xlabel("Importance heatmap", fontsize=10)
+
+                # mask
+                temp, mask = explanation.get_image_and_mask(explanation.top_labels[label_idx],
+                                                            positive_only=True,
+                                                            num_features=lime_features,
+                                                            hide_rest=True)
+                low_right.imshow(mark_boundaries(temp / 2 + 0.5, mask))
+                low_right.set_xlabel("Importance mask", fontsize=10)
+
+                fig.show()
+
+                if save_figs:
+                    current_label_image_key = "{}-{}".format(image_path_key, current_label)
+                    fig.savefig("{}/{}_output.png".format(plots_folder, current_label_image_key), dpi=600)
 
 
 def _stitchImages(im1, im2):
