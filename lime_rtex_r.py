@@ -1,19 +1,17 @@
+import os
 import shutil
 
-import keras as keras
+import numpy as np
 from keras import models, layers
-import matplotlib.pyplot as plt
-import os
 from lime import lime_image
 from skimage.segmentation import mark_boundaries
-import numpy as np
+
 import data_handler
-from tensorflow import keras
+from utils import _stitchImages
+import matplotlib.pyplot as plt
 import tensorflow as tf
-import matplotlib.cm as cm
 
-
-def visualize_images(
+def plot_explainability_rtex_r(
         image_paths,
         num,
         path_prefix="data/images/iu_xray/",
@@ -25,7 +23,7 @@ def visualize_images(
         save_figs=False,
         abnormal=True
 ):
-    def _predict(pasted_image):
+    def _predict_rtex_r(pasted_image):
         x1_data, x2_data = [], []
 
         for image in pasted_image:
@@ -42,82 +40,12 @@ def visualize_images(
         else:
             return 1 - model_predictions
 
-    # Grad CAM methods
-    def get_img_array(img_path, size):
-        # `img` is a PIL image of size 224x224
-        img = keras.preprocessing.image.load_img(img_path, target_size=size)
-        # `array` is a float32 Numpy array of shape (224, 224, 3)
-        array = keras.preprocessing.image.img_to_array(img)
-        # We add a dimension to transform our array into a "batch" of size (1, 224, 224, 3)
-        array = np.expand_dims(array, axis=0)
-        return array
-
-    def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
-        # First, we create a model that maps the input image to the activations
-        # of the last conv layer as well as the output predictions
-        grad_model = tf.keras.models.Model(
-            [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
-        )
-
-        # Then, we compute the gradient of the top predicted class for our input image
-        # with respect to the activations of the last conv layer
-        with tf.GradientTape() as tape:
-            last_conv_layer_output, preds = grad_model(img_array)
-            if pred_index is None:
-                pred_index = tf.argmax(preds[0])
-            class_channel = preds[:, pred_index]
-
-        # This is the gradient of the output neuron (top predicted or chosen)
-        # with regard to the output feature map of the last conv layer
-        grads = tape.gradient(class_channel, last_conv_layer_output)
-
-        # This is a vector where each entry is the mean intensity of the gradient
-        # over a specific feature map channel
-        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-
-        # We multiply each channel in the feature map array
-        # by "how important this channel is" with regard to the top predicted class
-        # then sum all the channels to obtain the heatmap class activation
-        last_conv_layer_output = last_conv_layer_output[0]
-        heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
-        heatmap = tf.squeeze(heatmap)
-
-        # For visualization purpose, we will also normalize the heatmap between 0 & 1
-        heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-        return heatmap.numpy()
-
-    def rescale_heatmap(img_path, heatmap, cam_path="cam.jpg", alpha=0.4):
-        # Load the original image
-        img = keras.preprocessing.image.load_img(img_path)
-        img = keras.preprocessing.image.img_to_array(img)
-
-        # Rescale heatmap to a range 0-255
-        heatmap = np.uint8(255 * heatmap)
-
-        # Use jet colormap to colorize heatmap
-        jet = cm.get_cmap("jet")
-
-        # Use RGB values of the colormap
-        jet_colors = jet(np.arange(256))[:, :3]
-        jet_heatmap = jet_colors[heatmap]
-
-        # Create an image with RGB colorized heatmap
-        jet_heatmap = keras.preprocessing.image.array_to_img(jet_heatmap)
-        jet_heatmap = jet_heatmap.resize((img.shape[1], img.shape[0]))
-        jet_heatmap = keras.preprocessing.image.img_to_array(jet_heatmap)
-
-        # Superimpose the heatmap on original image
-        superimposed_img = jet_heatmap * alpha + img
-        superimposed_img = keras.preprocessing.image.array_to_img(superimposed_img)
-
-        # Save the superimposed image
-        superimposed_img.save(cam_path)
-
+    plots_folder = "plots/rtex_r"
     if save_figs:
-        if os.path.exists("plots"):
-            shutil.rmtree("plots")
+        if os.path.exists(plots_folder):
+            shutil.rmtree(plots_folder)
 
-        os.mkdir("plots")
+        os.mkdir(plots_folder)
 
     for i in range(num):
         image_path_key = list(image_paths.keys())[i]
@@ -140,7 +68,12 @@ def visualize_images(
         low_left = axs[1][0]
         low_right = axs[1][1]
 
+        for figure in [top_left,top_right,low_left,low_right]:
+            figure.axes.get_yaxis().set_ticks([])
+            figure.axes.get_xaxis().set_ticks([])
+
         top_left.imshow(stitched_images / 2 + 0.5)
+
         if abnormal:
             top_left.set_xlabel("Abnormal image")
         else:
@@ -151,7 +84,7 @@ def visualize_images(
             lime_explainer = lime_image.LimeImageExplainer()
             explanation = lime_explainer.explain_instance(
                 stitched_images,
-                _predict,
+                _predict_rtex_r,
                 top_labels=1,
                 hide_color=0,
                 num_samples=lime_samples)
@@ -183,7 +116,7 @@ def visualize_images(
             fig.show()
 
             if save_figs:
-                fig.savefig("plots/{}_output.png".format(image_path_key), dpi=600)
+                fig.savefig("{}/{}_output.png".format(plots_folder, image_path_key), dpi=600)
 
         elif method == "grad":
             # Grad CAM explainer
@@ -239,20 +172,3 @@ def visualize_images(
             # Display heatmap
             plt.matshow(heatmap)
             plt.show()
-
-
-def _stitchImages(im1, im2):
-    # select the image with the fewest rows and fill in enough empty rows
-    rows1 = im1.shape[0]
-    rows2 = im2.shape[0]
-
-    if rows1 < rows2:
-        im1 = np.concatenate((im1, np.zeros((rows2 - rows1, im1.shape[1]))), axis=0)
-    elif rows1 > rows2:
-        im2 = np.concatenate((im2, np.zeros((rows1 - rows2, im2.shape[1]))), axis=0)
-
-    return np.concatenate((im1, im2), axis=1).astype("double")
-
-
-def _rgb2gray(rgb):
-    return np.dot(rgb[..., :3], [0.299, 0.587, 0.144])
