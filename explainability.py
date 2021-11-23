@@ -1,17 +1,16 @@
 import os
 
 import pandas as pd
+
 import data_handler
 import data_loader
 import rtex_r
 import rtex_t
-import os
-
 from lime_rtex_r import plot_explainability_rtex_r
 from lime_rtex_t import plot_explainability_rtex_t
 
 eval_modules = [
-    #"rtex_r",
+    "rtex_r",
     "rtex_t"
 ]
 
@@ -52,10 +51,10 @@ for module in eval_modules:
 
         plot_explainability_rtex_r(
             image_paths=abnormal_test_case_images,
-            num=2,
+            num=20,
             model=rtex_r_model,
             method="lime",
-            lime_samples=100,
+            lime_samples=1000,
             lime_features=10,
             save_figs=True,
             abnormal=use_abnormal_images
@@ -72,11 +71,11 @@ for module in eval_modules:
             image_tags,
             all_tags=all_tags,
             image_paths=test_cases_images,
-            num=5,
+            num=20,
             model=rtex_t_model,
             method="lime",
-            lime_samples=40,
-            num_top_labels=5,
+            lime_samples=1000,
+            num_top_labels=4,
             lime_features=10,
             save_figs=True
         )

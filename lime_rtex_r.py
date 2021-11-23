@@ -68,7 +68,12 @@ def plot_explainability_rtex_r(
         low_left = axs[1][0]
         low_right = axs[1][1]
 
+        for figure in [top_left,top_right,low_left,low_right]:
+            figure.axes.get_yaxis().set_ticks([])
+            figure.axes.get_xaxis().set_ticks([])
+
         top_left.imshow(stitched_images / 2 + 0.5)
+
         if abnormal:
             top_left.set_xlabel("Abnormal image")
         else:

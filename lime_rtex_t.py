@@ -1,17 +1,14 @@
 import os
 import shutil
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from lime import lime_image
+from skimage.segmentation import mark_boundaries
 
 import data_handler
 from utils import _stitchImages
-from keras import models, layers
-from lime import lime_image
-from skimage.segmentation import mark_boundaries
-import matplotlib.pyplot as plt
-
-import data_handler
 
 
 def plot_explainability_rtex_t(
@@ -91,6 +88,10 @@ def plot_explainability_rtex_t(
                 top_right = axs[0][1]
                 low_left = axs[1][0]
                 low_right = axs[1][1]
+
+                for figure in [top_left, top_right, low_left, low_right]:
+                    figure.axes.get_yaxis().set_ticks([])
+                    figure.axes.get_xaxis().set_ticks([])
 
                 top_left.imshow(stitched_images / 2 + 0.5)
                 top_left.set_xlabel("Input image")
