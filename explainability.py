@@ -10,8 +10,8 @@ from lime_rtex_r import plot_explainability_rtex_r
 from lime_rtex_t import plot_explainability_rtex_t
 
 eval_modules = [
-    "rtex_r",
-    "rtex_t"
+    "rtex_r"
+ #   ,"rtex_t"
 ]
 
 # preparing the test data
@@ -38,7 +38,7 @@ for module in eval_modules:
 
     if module == "rtex_r":
         # running RTEX@R
-        use_abnormal_images = False
+        use_abnormal_images = True
 
         abnormal_images, rtex_r_model = rtex_r.rate_images(
             test_case_ids,
