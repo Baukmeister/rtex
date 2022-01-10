@@ -8,13 +8,14 @@ This repository is based on the work done in [this article](https://academic.oup
 ## How to run it
 
 1. Install the requirements in `requirements.txt`
-    ```
+   ```
    pip install -r requirements.txt
    ```
 2. Run the `explainability.py` script
-    ```
+   ```
    python explainability.py
    ```
+3. Use the `load_mimic_data.py` script 
    
 ## Output
 Based on the settings selected in the `explainability.py` script the generated plots will appear in the `plots` folder
@@ -32,3 +33,4 @@ Based on the settings selected in the `explainability.py` script the generated p
 ### Tags
 
 ![](examples/tags/CXR471-degenerative%20change_output.png)
+
