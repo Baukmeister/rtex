@@ -15,8 +15,24 @@ This repository is based on the work done in [this article](https://academic.oup
    ```
    python explainability.py
    ```
-3. Use the `load_mimic_data.py` script 
+3. Use the `load_mimic_data.py` script
    
+The script needs a `mimic_config.json` file to run. The structure has to be as follows:
+
+```{json}
+{
+  "physionet_url": "https://physionet.org/files/mimic-cxr/2.0.0/files",
+  "physionet_user": "<YOUR USERNAME>",
+  "physionet_pass": "<YOUR PASSWORD>",
+  "pat_group": "<DESIRED PATIENT GROUP>",
+  "patient_ids": [
+    "p10000032",
+    "p10000032"
+    ]   
+}
+```
+
+
 ## Output
 Based on the settings selected in the `explainability.py` script the generated plots will appear in the `plots` folder
 
