@@ -7,9 +7,11 @@ def rate_images(
         test_case_ids,
         x_test,
         test_cases_images,
+        image_source,
         clean=True,
         num=100,
-        abnormal=True
+        abnormal=True,
+
 ):
     """
     Performs the ranking of abnormal images using RTEX@R
@@ -23,7 +25,7 @@ def rate_images(
     """
     rtex_r_model = load_model("data/models/rtex_r/iu_xray_bi_cxn.hdf5")
 
-    dump_file_name = "data/rtex_r_case_probs_pre_calc.json"
+    dump_file_name = f"data/{image_source}_rtex_r_case_probs_pre_calc.json"
 
     if not clean and os.path.isfile(dump_file_name):
         print("Using pre-stored RTEX@R results from dump file!")

@@ -9,6 +9,7 @@ def tag_images(
         x_test,
         test_case_images,
         tag_list_file,
+        image_source,
         clean=False
 ):
     """
@@ -24,7 +25,7 @@ def tag_images(
     """
 
     rtex_t_model = load_model("data/models/rtex_t/iu_xray_tag_cxn.hdf5")
-    dump_file_name = "data/rtex_t_tags_pre_calc.txt"
+    dump_file_name = f"data/{image_source}_rtex_t_tags_pre_calc.txt"
 
     if not clean and os.path.isfile(dump_file_name):
         print("Using pre-stored RTEX@T results from dump file!")
