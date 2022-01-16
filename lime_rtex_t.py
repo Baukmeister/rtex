@@ -8,7 +8,7 @@ from lime import lime_image
 from skimage.segmentation import mark_boundaries
 
 import data_handler
-from utils import _stitchImages
+from utils import stitchImages
 
 
 def plot_explainability_rtex_t(
@@ -58,7 +58,7 @@ def plot_explainability_rtex_t(
             path_prefix,
             return_images=True
         )
-        stitched_images = _stitchImages(img1, img2)
+        stitched_images = stitchImages(img1, img2)
 
         if method == "lime":
 

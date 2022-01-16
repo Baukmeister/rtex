@@ -1,12 +1,7 @@
 
 import numpy as np
 
-
-
-
-
-
-def _stitchImages(im1, im2):
+def stitchImages(im1, im2):
     # select the image with the fewest rows and fill in enough empty rows
     rows1 = im1.shape[0]
     rows2 = im2.shape[0]

@@ -7,7 +7,7 @@ from lime import lime_image
 from skimage.segmentation import mark_boundaries
 
 import data_handler
-from utils import _stitchImages
+from utils import stitchImages
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
@@ -55,7 +55,7 @@ def plot_explainability_rtex_r(
             path_prefix,
             return_images=True
         )
-        stitched_images = _stitchImages(img1, img2)
+        stitched_images = stitchImages(img1, img2)
 
         fig, axs = plt.subplots(2, 2)
         if abnormal:
